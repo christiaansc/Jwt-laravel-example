@@ -40,8 +40,6 @@ class Handler extends ExceptionHandler
     public function render($request, Throwable $e){
 
         if($request->expectsJson()){
-            Log::error($e);
-
             if($e instanceof UniqueConstraintViolationException){
                 $statusCode = Response::HTTP_INTERNAL_SERVER_ERROR();
                 return new JsonResponse([
@@ -51,7 +49,6 @@ class Handler extends ExceptionHandler
                     'code' => $statusCode
                 ]);
             }
-
         }
         return parent::render($request,$e);
     }

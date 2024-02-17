@@ -2,25 +2,26 @@
 
 namespace App\Http\Controllers\auth;
 
+use App\Dto\AuthDto;
 use App\Http\Controllers\Controller;
-use App\Models\User;
-use Exception;
+use App\Http\Requests\auth\RegisterRequest;
+use App\services\Auth\AuthServices;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
-use Throwable;
 use Tymon\JWTAuth\Exceptions\JWTException;
-use Tymon\JWTAuth\Facades\JWTAuth;
 
 class authController extends Controller
 {
+    private AuthServices $service;
     /**
      * Create a new AuthController instance.
      *
      * @return void
      */
-    public function __construct()
+    public function __construct(AuthServices $service)
     {
         $this->middleware('auth:api', ['except' => ['loginAdmin', 'register', 'logout', 'loginEcommerce']]);
+        $this->service = $service;
     }
 
     public function refresh()
@@ -28,40 +29,20 @@ class authController extends Controller
         return $this->respondWithToken(auth('api')->refresh());
     }
 
-    public function register(Request $request)
+    public function register(RegisterRequest $request)
     {
+        $userDto = new AuthDto(
+            $request->name,
+            $request->email,
+            $request->password,
+        );
 
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|max:255',
-            'email' => 'required|email|max:255|unique:users',
-            'password' => 'required|min:6',
+        $user = $this->service->registerUser($userDto);
+
+        return response()->json([
+            'message' => 'User created',
+            'user' => $user,
         ]);
-
-        try {
-
-            if ($validator->fails()) {
-                return response()->json($validator->errors(), 400);
-            }
-
-            $user = User::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'type_user' => 1,
-                'password' => $request->password,
-            ]);
-
-
-            return response()->json([
-                'message' => 'User Successfully created',
-                'user' => $user,
-            ], 201);
-        } catch (Throwable $e) {
-
-            // dd($e);
-            return response()->json([
-                'error' => $e
-            ], 500);
-        }
     }
 
     /**
@@ -85,7 +66,7 @@ class authController extends Controller
                 return response()->json($validator->errors(), 422);
             }
 
-            if (!$token = auth('api')->attempt(['state' => '1', 'type_user' => '1' , 'password'=> $request->password , 'email' =>$request->email])) {
+            if (!$token = auth('api')->attempt(['state' => '1', 'type_user' => '1', 'password' => $request->password, 'email' => $request->email])) {
                 return response()->json(['error' => 'Unauthorized'], 401);
             }
 
@@ -112,7 +93,7 @@ class authController extends Controller
                 return response()->json($validator->errors(), 422);
             }
 
-            if (!$token = auth('api')->attempt(['state' => '1', 'type_user' => '2' , 'password'=> $request->password , 'email' =>$request->email])) {
+            if (!$token = auth('api')->attempt(['state' => '1', 'type_user' => '2', 'password' => $request->password, 'email' => $request->email])) {
                 return response()->json(['error' => 'Unauthorized'], 401);
             }
 
@@ -152,9 +133,9 @@ class authController extends Controller
             'access_token' => $token,
             'token_type' => 'Bearer',
             'expire_in' => auth('api')->factory()->getTTL() * 60,
-            'user' =>[
-                'name'=>$user->name,
-                'email'=>$user->email,
+            'user' => [
+                'name' => $user->name,
+                'email' => $user->email,
 
             ]
         ]);

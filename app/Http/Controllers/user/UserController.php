@@ -5,16 +5,19 @@ namespace App\Http\Controllers\user;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserCollection;
 use App\Models\User;
+use App\services\user\UserService;
 use Error;
 use Illuminate\Http\Request;
-use App\Http\Resources\UserResource;
 
 class UserController extends Controller
 {
+    private UserService $userService;
 
-    public function __construct()
+    public function __construct(UserService $userService)
     {
-        $this->middleware('auth:api');
+
+        $this->userService = $userService;
+
     }
     /**
      * Display a listing of the resource.
@@ -26,10 +29,8 @@ class UserController extends Controller
      */
     public function getAlluser()
     {
-        $users =  new UserCollection(User::all());
 
-        if (!$users) throw new Error(message: 'Users', code: 401);
-
+        $users = $this->userService->getAllUsers();
         return response()->json($users);
     }
 
@@ -37,8 +38,7 @@ class UserController extends Controller
     {
 
         //code...
-        $user = new UserCollection(User::findOne($id));
-        if (!$user) return response()->json(['message' => 'User not found', 'statusCode' => 404], 404);
+        $user  = $this->userService->getUserById($id);
         return response()->json(['user' => $user]);
     }
 
